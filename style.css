@@ -72,6 +72,18 @@ input[type='text'] {
   transition: box-shadow .15s ease, border-color .15s ease;
 }
 
+/* Organização e variáveis
+ - Aqui definimos as cores e a estrutura do CSS em seções claras:
+   1) Reset e Base (fonte, background)
+   2) Painel principal (.panel)
+   3) Form groups (.form-group)
+   4) Cabeçalho e links
+   5) Inputs, botões e foco
+   6) Lista de tarefas (ul#montarLista e filhos)
+
+ Usar comentários acima facilita manutenção e serve como material de estudo.
+*/
+
 textarea {
   width: 100%;
   padding: 12px 14px;
@@ -131,17 +143,11 @@ ul#montarLista li {
 .task-title { font-size: 20px; font-weight: 700; color: #0f1724; margin-bottom:8px; padding-bottom:8px; border-bottom: 1px solid rgba(15,23,36,0.06); }
 .task-desc { font-size: 16px; color: #475569; line-height:1.6; margin-top:10px; }
 
-/* Ações alinhadas à direita; o JS coloca os botões dentro de .task-actions */
-.task-actions { display:flex; flex-direction:column; gap:10px; margin-left:12px; align-items:stretch; margin-left:auto; }
-.task-actions button { flex: 0 0 auto; width: 120px; padding: 8px 10px; font-size:14px; border-radius:10px; cursor:pointer; }
+/* Ações empilhadas verticalmente e alinhadas à direita para liberar largura do texto */
+.task-actions { display:flex; flex-direction:column; gap:10px; margin-left:auto; align-items:flex-end; }
+.task-actions button { flex: 0 0 auto; width: 110px; padding: 8px 10px; font-size:14px; border-radius:10px; cursor:pointer; }
 .task-actions button:first-child { background: linear-gradient(90deg,#2b6ef6,#1e56d6); color:#fff; border:none; }
 .task-actions button:last-child { background: linear-gradient(90deg,#ef4444,#dc2626); color:#fff; border:none; }
-
-/* Em telas maiores, deixar os botões lado a lado e alinhados à direita */
-@media (min-width:640px){
-  .task-actions { flex-direction:row; align-items:center; }
-  .task-actions button { width: 120px; }
-}
 
 .empty { text-align:center; color:#64748b; padding:28px 8px; }
 

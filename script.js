@@ -42,13 +42,13 @@ function getLista() {
           return;
         }
 
-        // Monta o HTML concatenando o retorno de montarLista para cada tarefa
+        // Injeta os elementos DOM montados na lista e esconde o estado vazio
+        ul.innerHTML = '';
         arrayListaTarefas.forEach((element) => {
-          html += montarLista(element[1], element[0]);
+          const node = montarLista(element[1], element[0]);
+          // montarLista agora retorna um Element (li)
+          ul.appendChild(node);
         });
-
-        // Injeta o HTML montado na lista e esconde o estado vazio
-        ul.innerHTML = html;
         if (emptyEl) emptyEl.style.display = 'none';
       });
     }
@@ -62,7 +62,18 @@ function getLista() {
  * - Retorna uma string HTML representando um item de lista estruturado
  * - Observação: o HTML gerado inclui classes usadas pelo CSS (.task-title, .task-desc, .task-actions)
  */
-function montarLista(tarefa, idBanco) {
+/**
+ * montarLista(tarefa, idBanco)
+ * - Versão refatorada: cria elementos DOM (mais seguro e testável)
+ * - Retorna um elemento <li> pronto para ser anexado ao <ul>
+ *
+ * Abaixo, deixamos comentada a versão antiga que retornava string HTML
+ * (mantida para aprendizado/comparação). A versão com DOM evita
+ * problemas com injeção de HTML e é mais fácil de manipular programaticamente.
+ */
+
+/*
+function montarLista_old(tarefa, idBanco) {
   return `<li id="'${tarefa.id}'">
       <div class="task-main">
         <div class="task-text">
@@ -75,6 +86,59 @@ function montarLista(tarefa, idBanco) {
         </div>
       </div>
     </li>`;
+}
+*/
+
+function montarLista(tarefa, idBanco) {
+  // cria o <li> e define o id no mesmo formato usado antes (com aspas simples)
+  const li = document.createElement('li');
+  li.id = `'${tarefa.id}'`;
+
+  // estrutura principal
+  const main = document.createElement('div');
+  main.className = 'task-main';
+
+  // texto: título + descrição
+  const text = document.createElement('div');
+  text.className = 'task-text';
+
+  const title = document.createElement('div');
+  title.className = 'task-title';
+  title.textContent = tarefa.titulo || '';
+
+  const desc = document.createElement('div');
+  desc.className = 'task-desc';
+  desc.textContent = tarefa.descricao || '';
+
+  text.appendChild(title);
+  text.appendChild(desc);
+
+  // ações: botões Editar / Deletar
+  const actions = document.createElement('div');
+  actions.className = 'task-actions';
+
+  const btnEdit = document.createElement('button');
+  btnEdit.textContent = 'Editar';
+  // chamamos a função global editarTarefas passando os ids
+  btnEdit.addEventListener('click', function () {
+    editarTarefas(tarefa.id, idBanco);
+  });
+
+  const btnDelete = document.createElement('button');
+  btnDelete.textContent = 'Deletar';
+  btnDelete.addEventListener('click', function () {
+    deletarTarefas(idBanco);
+  });
+
+  actions.appendChild(btnEdit);
+  actions.appendChild(btnDelete);
+
+  // montar árvore
+  main.appendChild(text);
+  main.appendChild(actions);
+  li.appendChild(main);
+
+  return li;
 }
 
 

@@ -3,15 +3,35 @@ let estaEditado = false;
 
 function getLista() {
   let ul = document.getElementById('montarLista');
+  let emptyEl = document.getElementById('emptyState');
   let html = '';
   fetch(url + '/tarefas.json').then((response) => {
     if (response.status === 200) {
       response.json().then((dados) => {
+        if (!dados) {
+          ul.innerHTML = '';
+          if (emptyEl) {
+            emptyEl.style.display = 'block';
+            emptyEl.innerText = 'Nenhuma tarefa encontrada.';
+          }
+          return;
+        }
+
         let arrayListaTarefas = Object.entries(dados); // transforma em array
+        if (arrayListaTarefas.length === 0) {
+          ul.innerHTML = '';
+          if (emptyEl) {
+            emptyEl.style.display = 'block';
+            emptyEl.innerText = 'Nenhuma tarefa encontrada.';
+          }
+          return;
+        }
+
         arrayListaTarefas.forEach((element) => {
           html += montarLista(element[1], element[0]);
         });
         ul.innerHTML = html;
+        if (emptyEl) emptyEl.style.display = 'none';
       });
     }
   });
@@ -19,29 +39,36 @@ function getLista() {
 
 function montarLista(tarefa, idBanco) {
   return `<li id="'${tarefa.id}'">
-        ${tarefa.titulo}<br>
-        ${tarefa.descricao}
-        <button onclick="editarTarefas('${tarefa.id}', '${idBanco}')">Editar</button>
-        <button onclick="deletarTarefas('${idBanco}')">Deletar</button>
+      <div class="task-main">
+        <div class="task-text">
+          <div class="task-title">${tarefa.titulo}</div>
+          <div class="task-desc">${tarefa.descricao}</div>
+        </div>
+        <div class="task-actions">
+          <button onclick="editarTarefas('${tarefa.id}', '${idBanco}')">Editar</button>
+          <button onclick="deletarTarefas('${idBanco}')">Deletar</button>
+        </div>
+      </div>
     </li>`;
 }
 
 function editarTarefas(id, idBanco) {
   if (!estaEditado) {
     let liParaEditar = document.getElementById(`'${id}'`);
-    const html = `<div>
-      <div>
-        <label>Editar Título da tarefa</label><br />
-        <input id="titulo" type="text" placeholder="Título da tarefa" />
+    const html = `<div class="task-main">
+      <div class="task-text">
+        <div class="form-group">
+          <label>Editar Título da tarefa</label><br />
+          <input id="titulo" type="text" placeholder="Título da tarefa" />
+        </div>
+        <div class="form-group">
+          <label>Edditar Descrição da tarefa</label><br />
+          <textarea id="descricao" placeholder="Descrião da tarefa"></textarea>
+        </div>
       </div>
-      <div>
-        <label>Edditar Descrição da tarefa</label><br />
-        <textarea
-          id="descricao"
-          placeholder="Descrião da tarefa"
-        ></textarea>
+      <div class="task-actions">
+        <button onclick="salvarTarefa('${idBanco}')">Salvar</button>
       </div>
-      <button onclick="salvarTarefa('${idBanco}')">Editar</button>
     </div>`;
     liParaEditar.innerHTML = html;
     estaEditado = true;

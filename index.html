@@ -10,6 +10,20 @@
     <div class="panel">
       <h1>Cadastro de Tarefas</h1>
       <a href="http://localhost:5500/listarTarefas.html">Ver tarefas criadas</a>
+
+      <!-- Auth UI: o usuário deve preencher firebaseConfig.js (a partir do sample) para ativar -->
+      <div id="authPanel" style="margin-top:12px;">
+        <div id="authForm">
+          <input id="authEmail" type="email" placeholder="Email" style="width:48%; margin-right:4%; padding:8px;" />
+          <input id="authPass" type="password" placeholder="Senha" style="width:48%; padding:8px;" />
+          <div style="margin-top:8px; display:flex; gap:8px;">
+            <button id="btnSignIn">Entrar</button>
+            <button id="btnSignUp">Registrar</button>
+            <button id="btnSignOut" style="display:none;">Sair</button>
+          </div>
+        </div>
+        <div id="authStatus" style="margin-top:8px; color:#475569; font-size:14px;"></div>
+      </div>
       <div class="form-group">
         <label>Título da tarefa</label><br />
         <input id="titulo" type="text" placeholder="Título da tarefa" />
@@ -21,6 +35,62 @@
       <button onclick="criarTarefa()">Cadastrar</button>
       <p id="mensagem"></p>
     </div>
+    <script type="module" src="/firebase-init.js"></script>
     <script src="/script.js"></script>
+    <script>
+      // Inicializa handlers de autenticação (se AppAuth estiver disponível)
+      (function () {
+        function setupAuthHandlers() {
+          const status = document.getElementById('authStatus');
+          const btnSignOut = document.getElementById('btnSignOut');
+          const btnSignIn = document.getElementById('btnSignIn');
+          const btnSignUp = document.getElementById('btnSignUp');
+          const emailEl = document.getElementById('authEmail');
+          const passEl = document.getElementById('authPass');
+
+          if (!window.AppAuth) return;
+
+          window.AppAuth.onAuthStateChanged((user) => {
+            if (user) {
+              status.innerText = 'Logado como: ' + (user.email || user.uid);
+              btnSignOut.style.display = 'inline-block';
+              btnSignIn.style.display = 'none';
+              btnSignUp.style.display = 'none';
+              // recarrega lista (caso esteja na página de listagem)
+              if (typeof getLista === 'function') getLista();
+            } else {
+              status.innerText = 'Não autenticado';
+              btnSignOut.style.display = 'none';
+              btnSignIn.style.display = 'inline-block';
+              btnSignUp.style.display = 'inline-block';
+            }
+          });
+
+          btnSignIn.addEventListener('click', async () => {
+            try {
+              await window.AppAuth.signIn(emailEl.value, passEl.value);
+            } catch (e) { alert('Erro ao entrar: ' + e.message); }
+          });
+
+          btnSignUp.addEventListener('click', async () => {
+            try {
+              await window.AppAuth.signUp(emailEl.value, passEl.value);
+            } catch (e) { alert('Erro ao registrar: ' + e.message); }
+          });
+
+          btnSignOut.addEventListener('click', async () => {
+            try { await window.AppAuth.signOut(); } catch (e) { console.error(e); }
+          });
+        }
+
+        // tenta rodar algumas vezes caso o módulo ainda não tenha inicializado
+        let tries = 0;
+        const iv = setInterval(() => {
+          tries += 1;
+          if (window.AppAuth) { setupAuthHandlers(); clearInterval(iv); }
+          if (tries > 10) clearInterval(iv);
+        }, 500);
+      })();
+    </script>
   </body>
 </html>

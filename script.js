@@ -14,12 +14,45 @@ function getLista() {
   let ul = document.getElementById('montarLista');
   let emptyEl = document.getElementById('emptyState');
   let html = '';
+  // Se o Firebase foi inicializado, use a API AppAuth que garante que
+  // estamos lendo os dados do nó por-usuário (/users/{uid}/tarefas).
+  if (window.AppAuth && window.__FIREBASE_INITIALIZED__) {
+    window.AppAuth.getTasks().then((dados) => {
+      if (!dados) {
+        ul.innerHTML = '';
+        if (emptyEl) {
+          emptyEl.style.display = 'block';
+          emptyEl.innerText = 'Nenhuma tarefa encontrada.';
+        }
+        return;
+      }
 
-  // Faz uma requisição GET para /tarefas.json
+      const arrayListaTarefas = Object.entries(dados);
+      if (arrayListaTarefas.length === 0) {
+        ul.innerHTML = '';
+        if (emptyEl) {
+          emptyEl.style.display = 'block';
+          emptyEl.innerText = 'Nenhuma tarefa encontrada.';
+        }
+        return;
+      }
+
+      ul.innerHTML = '';
+      arrayListaTarefas.forEach((element) => {
+        const node = montarLista(element[1], element[0]);
+        ul.appendChild(node);
+      });
+      if (emptyEl) emptyEl.style.display = 'none';
+    }).catch((err) => {
+      console.error('Erro ao obter tarefas via AppAuth', err);
+    });
+    return;
+  }
+
+  // Fallback: comportamento antigo via REST (sem autenticação)
   fetch(url + '/tarefas.json').then((response) => {
     if (response.status === 200) {
       response.json().then((dados) => {
-        // Se não houver dados (null), mostrar mensagem de estado vazio
         if (!dados) {
           ul.innerHTML = '';
           if (emptyEl) {
@@ -29,10 +62,7 @@ function getLista() {
           return;
         }
 
-        // Converte o objeto retornado em um array de pares [key, value]
         let arrayListaTarefas = Object.entries(dados);
-
-        // Se o array estiver vazio, mostrar mensagem de vazio
         if (arrayListaTarefas.length === 0) {
           ul.innerHTML = '';
           if (emptyEl) {
@@ -42,11 +72,9 @@ function getLista() {
           return;
         }
 
-        // Injeta os elementos DOM montados na lista e esconde o estado vazio
         ul.innerHTML = '';
         arrayListaTarefas.forEach((element) => {
           const node = montarLista(element[1], element[0]);
-          // montarLista agora retorna um Element (li)
           ul.appendChild(node);
         });
         if (emptyEl) emptyEl.style.display = 'none';
@@ -54,7 +82,6 @@ function getLista() {
     }
   });
 }
-
 
 /**
  * montarLista(tarefa, idBanco)
@@ -141,7 +168,6 @@ function montarLista(tarefa, idBanco) {
   return li;
 }
 
-
 /**
  * editarTarefas(id, idBanco)
  * - Quando o usuário clica em "Editar", substitui o conteúdo do <li> pelo formulário de edição
@@ -176,7 +202,6 @@ function editarTarefas(id, idBanco) {
   }
 }
 
-
 /**
  * salvarTarefa(idBanco)
  * - Lê os valores do formulário de edição e envia um PATCH para atualizar apenas os campos alterados
@@ -190,25 +215,32 @@ function salvarTarefa(idBanco) {
     descricao: descricao,
   };
 
-  fetch(url + `/tarefas/${idBanco}.json`, {
-    method: 'PATCH',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify(tarefa),
-  }).then((response) => {
-    if (response.status == 200) {
-      // Recarrega a lista para refletir as mudanças
-      getLista();
-    }
-  });
+  // Se AppAuth disponível, atualiza no nó do usuário
+  if (window.AppAuth && window.__FIREBASE_INITIALIZED__) {
+    window.AppAuth
+      .updateTask(idBanco, tarefa)
+      .then(() => getLista())
+      .catch((e) => console.error(e));
+  } else {
+    fetch(url + `/tarefas/${idBanco}.json`, {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(tarefa),
+    }).then((response) => {
+      if (response.status == 200) {
+        // Recarrega a lista para refletir as mudanças
+        getLista();
+      }
+    });
+  }
 
   // Permite futuras edições novamente
   estaEditado = false;
 
   console.log(titulo, descricao);
 }
-
 
 /**
  * deletarTarefas(idBanco)
@@ -217,16 +249,22 @@ function salvarTarefa(idBanco) {
 function deletarTarefas(idBanco) {
   const confirme = confirm('Tem certeza que deseja deletar esta tarefa?');
   if (confirme) {
-    fetch(url + `/tarefas/${idBanco}.json`, {
-      method: 'DELETE',
-    }).then((response) => {
-      if (response.status == 200) {
-        getLista();
-      }
-    });
+    if (window.AppAuth && window.__FIREBASE_INITIALIZED__) {
+      window.AppAuth
+        .deleteTask(idBanco)
+        .then(() => getLista())
+        .catch((e) => console.error(e));
+    } else {
+      fetch(url + `/tarefas/${idBanco}.json`, {
+        method: 'DELETE',
+      }).then((response) => {
+        if (response.status == 200) {
+          getLista();
+        }
+      });
+    }
   }
 }
-
 
 /**
  * criarTarefa()

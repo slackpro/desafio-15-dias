@@ -171,6 +171,6 @@ python -m http.server 5500
 
 - Projeto simples e direto, bom para demonstrar entendimento de integração com backend via HTTP.
 - Código comentado em português para facilitar entendimento e uso didático.
-- Possíveis próximos passos: adicionar autenticação, validar inputs, usar build tools ou migrar para framework (React/Vue) se necessário.
+- Possíveis próximos passos: validar inputs, usar build tools ou migrar para framework (React/Vue) se necessário.
 
 ---

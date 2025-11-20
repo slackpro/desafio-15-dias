@@ -12,151 +12,183 @@ let url = 'https://desafio-15-dias-315e5-default-rtdb.firebaseio.com/';
 // Flag para evitar múltiplas edições simultâneas (ui guard)
 let estaEditado = false;
 
+// Referência para a subscrição do Firebase (para poder cancelar se necessário)
+let unsubscribeAuth = null;
+
+document.addEventListener('DOMContentLoaded', () => {
+  // Inicializa handlers de autenticação
+  initAuthHandlers();
+
+  // Configura listeners para criação de tarefa
+  const btnCriar = document.querySelector('button[onclick="criarTarefa()"]');
+  if (btnCriar) {
+    // Remove onclick do HTML e adiciona listener
+    btnCriar.removeAttribute('onclick');
+    btnCriar.addEventListener('click', criarTarefa);
+  }
+
+  // Tenta carregar a lista inicialmente (fallback ou se já estiver logado)
+  if (!window.AppAuth) {
+    // getLista(); // Comentado para evitar erro 401 no console (priorizando Firebase)
+  }
+});
+
+function initAuthHandlers() {
+  // Polling para esperar o AppAuth carregar
+  let tries = 0;
+  const iv = setInterval(() => {
+    tries += 1;
+    if (window.AppAuth) {
+      clearInterval(iv);
+      setupAuthListeners();
+    }
+    if (tries > 20) clearInterval(iv);
+  }, 500);
+}
+
+function setupAuthListeners() {
+  const btnSignOut = document.getElementById('btnSignOut');
+  const btnSignIn = document.getElementById('btnSignIn');
+  const btnSignUp = document.getElementById('btnSignUp');
+  const authForm = document.getElementById('authForm');
+  const emailEl = document.getElementById('authEmail');
+  const passEl = document.getElementById('authPass');
+
+  if (!window.AppAuth) return;
+
+  window.AppAuth.onAuthStateChanged((user) => {
+    if (user) {
+      if (authForm) authForm.style.display = 'none';
+      if (btnSignOut) btnSignOut.style.display = 'inline-block';
+      if (btnSignIn) btnSignIn.style.display = 'none';
+      if (btnSignUp) btnSignUp.style.display = 'none';
+
+      // Inscreve para atualizações em tempo real
+      if (window.AppAuth.subscribeToTasks) {
+        if (unsubscribeAuth) unsubscribeAuth(); // limpa anterior se houver
+        unsubscribeAuth = window.AppAuth.subscribeToTasks((dados) => {
+          renderizarLista(dados);
+        });
+      } else {
+        getLista();
+      }
+    } else {
+      if (authForm) authForm.style.display = 'block';
+      if (btnSignOut) btnSignOut.style.display = 'none';
+      if (btnSignIn) btnSignIn.style.display = 'inline-block';
+      if (btnSignUp) btnSignUp.style.display = 'inline-block';
+
+      // Limpa lista ao deslogar
+      const ul = document.getElementById('montarLista');
+      if (ul) ul.innerHTML = '';
+      const emptyEl = document.getElementById('emptyState');
+      if (emptyEl) {
+        emptyEl.style.display = 'block';
+        emptyEl.innerText = 'Faça login para ver suas tarefas.';
+      }
+    }
+  });
+
+  if (btnSignIn) {
+    btnSignIn.addEventListener('click', async () => {
+      try {
+        await window.AppAuth.signIn(emailEl.value, passEl.value);
+      } catch (e) {
+        alert('Erro ao entrar: ' + e.message);
+      }
+    });
+  }
+
+  if (btnSignUp) {
+    btnSignUp.addEventListener('click', async () => {
+      try {
+        await window.AppAuth.signUp(emailEl.value, passEl.value);
+      } catch (e) {
+        alert('Erro ao registrar: ' + e.message);
+      }
+    });
+  }
+
+  if (btnSignOut) {
+    btnSignOut.addEventListener('click', async () => {
+      try {
+        await window.AppAuth.signOut();
+      } catch (e) {
+        console.error(e);
+      }
+    });
+  }
+}
+
 /**
  * getLista()
- * - Busca a lista de tarefas no servidor
- * - Converte o resultado em HTML chamando montarLista para cada item
- * - Mostra ou esconde o elemento #emptyState dependendo do resultado
+ * - Busca a lista de tarefas no servidor (Fallback REST ou AppAuth one-time)
  */
 function getLista() {
+  // Se tiver AppAuth com subscribe, a lógica é tratada no onAuthStateChanged
+  if (window.AppAuth && window.AppAuth.subscribeToTasks) return;
+
   let ul = document.getElementById('montarLista');
   let emptyEl = document.getElementById('emptyState');
-  let html = '';
-  // Se a página não tiver o elemento de listagem, sair silenciosamente.
-  // Isso evita erros quando chamamos getLista() em páginas que não mostram a lista.
-  if (!ul) {
-    console.warn('getLista: elemento "montarLista" não encontrado. Pulando.');
-    return;
-  }
 
-  // Observability: logs ajudam a diagnosticar quando o AppAuth está presente
-  console.debug(
-    'getLista: window.AppAuth=',
-    !!window.AppAuth,
-    '__FIREBASE_INITIALIZED__=',
-    !!window.__FIREBASE_INITIALIZED__
-  );
-  // Se o Firebase foi inicializado, use a API AppAuth que garante que
-  // estamos lendo os dados do nó por-usuário (/users/{uid}/tarefas).
-  // Se a API AppAuth estiver disponível, sempre priorize ela e NÃO tente o fallback REST
-  // O fallback pode gerar 401 se o Realtime Database estiver protegido por regras.
+  if (!ul) return;
+
   if (window.AppAuth) {
-    console.debug('getLista: usando AppAuth.getTasks()');
     window.AppAuth.getTasks()
-      .then((dados) => {
-        if (!dados) {
-          ul.innerHTML = '';
-          if (emptyEl) {
-            emptyEl.style.display = 'block';
-            emptyEl.innerText = 'Nenhuma tarefa encontrada.';
-          }
-          console.debug('getLista: AppAuth.getTasks retornou vazio/null');
-          return;
-        }
-
-        const arrayListaTarefas = Object.entries(dados);
-        if (arrayListaTarefas.length === 0) {
-          ul.innerHTML = '';
-          if (emptyEl) {
-            emptyEl.style.display = 'block';
-            emptyEl.innerText = 'Nenhuma tarefa encontrada.';
-          }
-          return;
-        }
-
-        ul.innerHTML = '';
-        arrayListaTarefas.forEach((element) => {
-          const node = montarLista(element[1], element[0]);
-          ul.appendChild(node);
-        });
-        if (emptyEl) emptyEl.style.display = 'none';
-      })
-      .catch((err) => {
-        console.error('Erro ao obter tarefas via AppAuth', err);
-      });
+      .then((dados) => renderizarLista(dados))
+      .catch((err) => console.error('Erro ao obter tarefas via AppAuth', err));
     return;
   }
 
-  // Fallback: comportamento antigo via REST (sem autenticação)
-  console.warn(
-    'getLista: AppAuth não disponível — usando fallback REST (pode gerar 401).'
-  );
+  // Fallback REST
   fetch(url + '/tarefas.json').then((response) => {
     if (response.status === 200) {
-      response.json().then((dados) => {
-        if (!dados) {
-          ul.innerHTML = '';
-          if (emptyEl) {
-            emptyEl.style.display = 'block';
-            emptyEl.innerText = 'Nenhuma tarefa encontrada.';
-          }
-          return;
-        }
-
-        let arrayListaTarefas = Object.entries(dados);
-        if (arrayListaTarefas.length === 0) {
-          ul.innerHTML = '';
-          if (emptyEl) {
-            emptyEl.style.display = 'block';
-            emptyEl.innerText = 'Nenhuma tarefa encontrada.';
-          }
-          return;
-        }
-
-        ul.innerHTML = '';
-        arrayListaTarefas.forEach((element) => {
-          const node = montarLista(element[1], element[0]);
-          ul.appendChild(node);
-        });
-        if (emptyEl) emptyEl.style.display = 'none';
-      });
+      response.json().then((dados) => renderizarLista(dados));
     }
   });
 }
 
-/**
- * montarLista(tarefa, idBanco)
- * - Recebe um objeto `tarefa` (com título e descrição) e o id no banco
- * - Retorna uma string HTML representando um item de lista estruturado
- * - Observação: o HTML gerado inclui classes usadas pelo CSS (.task-title, .task-desc, .task-actions)
- */
-/**
- * montarLista(tarefa, idBanco)
- * - Versão refatorada: cria elementos DOM (mais seguro e testável)
- * - Retorna um elemento <li> pronto para ser anexado ao <ul>
- *
- * Abaixo, deixamos comentada a versão antiga que retornava string HTML
- * (mantida para aprendizado/comparação). A versão com DOM evita
- * problemas com injeção de HTML e é mais fácil de manipular programaticamente.
- */
+function renderizarLista(dados) {
+  let ul = document.getElementById('montarLista');
+  let emptyEl = document.getElementById('emptyState');
 
-/*
-function montarLista_old(tarefa, idBanco) {
-  return `<li id="'${tarefa.id}'">
-      <div class="task-main">
-        <div class="task-text">
-          <div class="task-title">${tarefa.titulo}</div>
-          <div class="task-desc">${tarefa.descricao}</div>
-        </div>
-        <div class="task-actions">
-          <button onclick="editarTarefas('${tarefa.id}', '${idBanco}')">Editar</button>
-          <button onclick="deletarTarefas('${idBanco}')">Deletar</button>
-        </div>
-      </div>
-    </li>`;
+  if (!ul) return;
+
+  ul.innerHTML = ''; // Limpa lista atual
+
+  if (!dados) {
+    if (emptyEl) {
+      emptyEl.style.display = 'block';
+      emptyEl.innerText = 'Nenhuma tarefa encontrada.';
+    }
+    return;
+  }
+
+  const arrayListaTarefas = Object.entries(dados);
+  if (arrayListaTarefas.length === 0) {
+    if (emptyEl) {
+      emptyEl.style.display = 'block';
+      emptyEl.innerText = 'Nenhuma tarefa encontrada.';
+    }
+    return;
+  }
+
+  if (emptyEl) emptyEl.style.display = 'none';
+
+  arrayListaTarefas.forEach((element) => {
+    const node = montarLista(element[1], element[0]);
+    ul.appendChild(node);
+  });
 }
-*/
 
 function montarLista(tarefa, idBanco) {
-  // cria o <li> e define o id no mesmo formato usado antes (com aspas simples)
   const li = document.createElement('li');
-  li.id = `'${tarefa.id}'`;
+  // Fix: remove aspas extras no ID
+  li.id = idBanco;
 
-  // estrutura principal
   const main = document.createElement('div');
   main.className = 'task-main';
 
-  // texto: título + descrição
   const text = document.createElement('div');
   text.className = 'task-text';
 
@@ -171,15 +203,13 @@ function montarLista(tarefa, idBanco) {
   text.appendChild(title);
   text.appendChild(desc);
 
-  // ações: botões Editar / Deletar
   const actions = document.createElement('div');
   actions.className = 'task-actions';
 
   const btnEdit = document.createElement('button');
   btnEdit.textContent = 'Editar';
-  // chamamos a função global editarTarefas passando os ids
   btnEdit.addEventListener('click', function () {
-    editarTarefas(tarefa.id, idBanco);
+    editarTarefas(idBanco, tarefa);
   });
 
   const btnDelete = document.createElement('button');
@@ -191,7 +221,6 @@ function montarLista(tarefa, idBanco) {
   actions.appendChild(btnEdit);
   actions.appendChild(btnDelete);
 
-  // montar árvore
   main.appendChild(text);
   main.appendChild(actions);
   li.appendChild(main);
@@ -199,94 +228,132 @@ function montarLista(tarefa, idBanco) {
   return li;
 }
 
-/**
- * editarTarefas(id, idBanco)
- * - Quando o usuário clica em "Editar", substitui o conteúdo do <li> pelo formulário de edição
- * - A flag `estaEditado` impede que várias edições sejam abertas ao mesmo tempo
- * - O formulário usa a mesma estrutura visual (.task-main, .task-text, .task-actions)
- */
-function editarTarefas(id, idBanco) {
-  if (!estaEditado) {
-    // Seleciona o <li> pelo id gerado
-    let liParaEditar = document.getElementById(`'${id}'`);
+function editarTarefas(idBanco, tarefaAtual) {
+  if (estaEditado) return;
 
-    // HTML do formulário de edição (injetado diretamente no <li>)
-    const html = `<div class="task-main">
-      <div class="task-text">
-        <div class="form-group">
-          <label>Editar Título da tarefa</label><br />
-          <input id="titulo" type="text" placeholder="Título da tarefa" />
-        </div>
-        <div class="form-group">
-          <label>Edditar Descrição da tarefa</label><br />
-          <textarea id="descricao" placeholder="Descrião da tarefa"></textarea>
-        </div>
-      </div>
-      <div class="task-actions">
-        <button onclick="salvarTarefa('${idBanco}')">Salvar</button>
-      </div>
-    </div>`;
+  const liParaEditar = document.getElementById(idBanco);
+  if (!liParaEditar) return;
 
-    // Substitui o conteúdo do <li> e marca como editando
-    liParaEditar.innerHTML = html;
-    estaEditado = true;
-  }
+  estaEditado = true;
+
+  // Limpa o LI e constrói o form via DOM
+  liParaEditar.innerHTML = '';
+
+  const main = document.createElement('div');
+  main.className = 'task-main';
+
+  const textDiv = document.createElement('div');
+  textDiv.className = 'task-text';
+
+  // Grupo Título
+  const groupTitle = document.createElement('div');
+  groupTitle.className = 'form-group';
+  const labelTitle = document.createElement('label');
+  labelTitle.textContent = 'Editar Título';
+  const inputTitle = document.createElement('input');
+  inputTitle.type = 'text';
+  inputTitle.value = tarefaAtual.titulo || '';
+  inputTitle.placeholder = 'Título da tarefa';
+  groupTitle.appendChild(labelTitle);
+  groupTitle.appendChild(document.createElement('br'));
+  groupTitle.appendChild(inputTitle);
+
+  // Grupo Descrição
+  const groupDesc = document.createElement('div');
+  groupDesc.className = 'form-group';
+  const labelDesc = document.createElement('label');
+  labelDesc.textContent = 'Editar Descrição';
+  const areaDesc = document.createElement('textarea');
+  areaDesc.value = tarefaAtual.descricao || '';
+  areaDesc.placeholder = 'Descrição da tarefa';
+  groupDesc.appendChild(labelDesc);
+  groupDesc.appendChild(document.createElement('br'));
+  groupDesc.appendChild(areaDesc);
+
+  textDiv.appendChild(groupTitle);
+  textDiv.appendChild(groupDesc);
+
+  // Ações
+  const actionsDiv = document.createElement('div');
+  actionsDiv.className = 'task-actions';
+
+  const btnSave = document.createElement('button');
+  btnSave.textContent = 'Salvar';
+  btnSave.addEventListener('click', () => {
+    salvarTarefa(idBanco, inputTitle.value, areaDesc.value);
+  });
+
+  const btnCancel = document.createElement('button');
+  btnCancel.textContent = 'Cancelar';
+  btnCancel.style.marginLeft = '5px'; // pequeno ajuste visual
+  btnCancel.addEventListener('click', () => {
+    estaEditado = false;
+    // Recarrega a lista para restaurar o item (ou usa dados locais se tivesse cache)
+    // Como estamos com listener, talvez o ideal fosse apenas redesenhar este item,
+    // mas o listener vai cuidar se houver update.
+    // Aqui, forçamos um re-render simples ou esperamos o listener.
+    // Simplificação: chama getLista() ou espera o listener atualizar se algo mudou.
+    // Mas se cancelou, nada mudou no server. Então precisamos restaurar o visual.
+    if (window.AppAuth && window.AppAuth.subscribeToTasks) {
+      // O listener deve estar ativo, mas como alteramos o DOM localmente,
+      // precisamos forçar um refresh visual.
+      // Uma forma é ler o estado atual do banco (que não mudou).
+      // Ou simplesmente recarregar a página/lista.
+      // Vamos confiar no listener disparando ou chamar renderizarLista com o que temos?
+      // O listener não dispara se não houver mudança no server.
+      // Então vamos restaurar manualmente chamando renderizarLista com dados atuais se possível,
+      // ou apenas recarregando tudo.
+      window.location.reload(); // Brutal mas resolve rápido no curto prazo.
+      // Melhor:
+      // renderizarLista(dadosCacheados); // mas não temos cache global aqui fácil.
+    } else {
+      getLista();
+    }
+  });
+
+  actionsDiv.appendChild(btnSave);
+  actionsDiv.appendChild(btnCancel);
+
+  main.appendChild(textDiv);
+  main.appendChild(actionsDiv);
+  liParaEditar.appendChild(main);
 }
 
-/**
- * salvarTarefa(idBanco)
- * - Lê os valores do formulário de edição e envia um PATCH para atualizar apenas os campos alterados
- * - Ao receber sucesso, recarrega a lista chamando getLista()
- */
-function salvarTarefa(idBanco) {
-  const titulo = document.getElementById('titulo').value;
-  const descricao = document.getElementById('descricao').value;
+function salvarTarefa(idBanco, titulo, descricao) {
   const tarefa = {
     titulo: titulo,
     descricao: descricao,
   };
 
-  // Se AppAuth disponível, atualiza no nó do usuário
   if (window.AppAuth && window.__FIREBASE_INITIALIZED__) {
-    console.debug('salvarTarefa: usando AppAuth.updateTask', idBanco, tarefa);
     window.AppAuth.updateTask(idBanco, tarefa)
-      .then(() => getLista())
-      .catch((e) => console.error('salvarTarefa erro AppAuth.updateTask', e));
+      .then(() => {
+        estaEditado = false;
+        // Listener vai atualizar a UI
+      })
+      .catch((e) => console.error('Erro ao salvar', e));
   } else {
     fetch(url + `/tarefas/${idBanco}.json`, {
       method: 'PATCH',
-      headers: {
-        'Content-Type': 'application/json',
-      },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(tarefa),
     }).then((response) => {
       if (response.status == 200) {
-        // Recarrega a lista para refletir as mudanças
+        estaEditado = false;
         getLista();
       }
     });
   }
-
-  // Permite futuras edições novamente
-  estaEditado = false;
-
-  console.log(titulo, descricao);
 }
 
-/**
- * deletarTarefas(idBanco)
- * - Pergunta ao usuário para confirmar e, se confirmado, envia DELETE para o servidor
- */
 function deletarTarefas(idBanco) {
   const confirme = confirm('Tem certeza que deseja deletar esta tarefa?');
   if (confirme) {
     if (window.AppAuth && window.__FIREBASE_INITIALIZED__) {
-      console.debug('deletarTarefas: usando AppAuth.deleteTask', idBanco);
-      window.AppAuth.deleteTask(idBanco)
-        .then(() => getLista())
-        .catch((e) =>
-          console.error('deletarTarefas erro AppAuth.deleteTask', e)
-        );
+      window.AppAuth.deleteTask(idBanco).catch((e) =>
+        console.error('Erro ao deletar', e)
+      );
+      // Listener atualiza UI
     } else {
       fetch(url + `/tarefas/${idBanco}.json`, {
         method: 'DELETE',
@@ -299,124 +366,67 @@ function deletarTarefas(idBanco) {
   }
 }
 
-/**
- * criarTarefa()
- * - Lê os campos do formulário de cadastro, monta um objeto tarefa com id baseado em timestamp
- * - Envia POST para /tarefas.json criando um novo registro
- * - Exibe uma mensagem simples em #mensagem dependendo do resultado
- */
 function criarTarefa() {
   let titulo = document.getElementById('titulo').value;
   let descricao = document.getElementById('descricao').value;
   let mensagem = document.getElementById('mensagem');
-  // timeout para esconder a mensagem depois do fade
+
   if (typeof window._mensagemTimeout === 'undefined')
     window._mensagemTimeout = null;
 
   const tarefa = {
-    id: new Date().toISOString(),
+    id: new Date().toISOString(), // Ainda usado para fallback, mas Firebase gera pushID
     titulo: titulo,
     descricao: descricao,
   };
 
-  try {
-    // Se o AppAuth (Firebase SDK) estiver inicializado, use a API por-usuário
-    // Isso evita erros 401 quando as regras do Realtime Database exigem autenticação
-    if (window.AppAuth && window.__FIREBASE_INITIALIZED__) {
-      console.debug('criarTarefa: usando AppAuth.createTask', tarefa);
-      window.AppAuth.createTask(tarefa)
-        .then(() => {
-          if (mensagem) {
-            clearTimeout(window._mensagemTimeout);
-            mensagem.classList.remove('msg-error');
-            mensagem.classList.add('msg-success');
-            mensagem.innerText = 'Salvo com sucesso';
-            mensagem.classList.add('visible');
-            window._mensagemTimeout = setTimeout(() => {
-              mensagem.classList.remove('visible');
-            }, 4000);
-          }
-          // limpa campos do formulário após criar com sucesso
-          try {
-            const tituloEl = document.getElementById('titulo');
-            const descEl = document.getElementById('descricao');
-            if (tituloEl) {
-              tituloEl.value = '';
-              tituloEl.focus();
-            }
-            if (descEl) descEl.value = '';
-          } catch (e) {
-            /* ignorar se elementos não existirem na página atual */
-          }
-          if (typeof getLista === 'function') getLista();
-        })
-        .catch((err) => {
-          console.error('Erro criando tarefa via AppAuth', err);
-          if (mensagem) {
-            clearTimeout(window._mensagemTimeout);
-            mensagem.classList.remove('msg-success');
-            mensagem.classList.add('msg-error');
-            mensagem.innerText = 'Erro ao salvar: ' + (err.message || err);
-            mensagem.classList.add('visible');
-            window._mensagemTimeout = setTimeout(() => {
-              mensagem.classList.remove('visible');
-            }, 6000);
-          }
-        });
-    } else {
-      // Fallback antigo via REST (sem autenticação)
-      fetch(url + '/tarefas.json', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(tarefa),
-      }).then((response) => {
-        if (response.ok) {
-          if (mensagem) {
-            clearTimeout(window._mensagemTimeout);
-            mensagem.classList.remove('msg-error');
-            mensagem.classList.add('msg-success');
-            mensagem.innerText = 'Salvo com sucesso';
-            mensagem.classList.add('visible');
-            window._mensagemTimeout = setTimeout(() => {
-              mensagem.classList.remove('visible');
-            }, 4000);
-          }
-          // limpa campos do formulário após criar com sucesso
-          try {
-            const tituloEl = document.getElementById('titulo');
-            const descEl = document.getElementById('descricao');
-            if (tituloEl) {
-              tituloEl.value = '';
-              tituloEl.focus();
-            }
-            if (descEl) descEl.value = '';
-          } catch (e) {
-            /* ignorar se elementos não existirem na página atual */
-          }
-          if (typeof getLista === 'function') getLista();
-        } else {
-          if (mensagem) {
-            clearTimeout(window._mensagemTimeout);
-            mensagem.classList.remove('msg-success');
-            mensagem.classList.add('msg-error');
-            mensagem.innerText =
-              'Erro ao salvar (HTTP ' + response.status + ')';
-            mensagem.classList.add('visible');
-            window._mensagemTimeout = setTimeout(() => {
-              mensagem.classList.remove('visible');
-            }, 6000);
-          }
-        }
-      });
-    }
-  } catch (error) {
-    console.log(error);
+  const onSucesso = () => {
     if (mensagem) {
-      mensagem.classList.remove('msg-success');
-      mensagem.classList.add('msg-error');
-      mensagem.innerText = String(error);
+      clearTimeout(window._mensagemTimeout);
+      mensagem.className = ''; // limpa classes
+      mensagem.classList.add('msg-success', 'visible');
+      mensagem.innerText = 'Salvo com sucesso';
+      window._mensagemTimeout = setTimeout(() => {
+        mensagem.classList.remove('visible');
+      }, 4000);
     }
+    // Limpa form
+    const t = document.getElementById('titulo');
+    const d = document.getElementById('descricao');
+    if (t) {
+      t.value = '';
+      t.focus();
+    }
+    if (d) d.value = '';
+
+    if (!window.AppAuth) getLista(); // Se não tem listener, atualiza manual
+  };
+
+  const onErro = (err) => {
+    console.error(err);
+    if (mensagem) {
+      clearTimeout(window._mensagemTimeout);
+      mensagem.className = '';
+      mensagem.classList.add('msg-error', 'visible');
+      mensagem.innerText = 'Erro ao salvar: ' + (err.message || err);
+      window._mensagemTimeout = setTimeout(() => {
+        mensagem.classList.remove('visible');
+      }, 6000);
+    }
+  };
+
+  if (window.AppAuth && window.__FIREBASE_INITIALIZED__) {
+    window.AppAuth.createTask(tarefa).then(onSucesso).catch(onErro);
+  } else {
+    fetch(url + '/tarefas.json', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(tarefa),
+    })
+      .then((response) => {
+        if (response.ok) onSucesso();
+        else onErro('HTTP ' + response.status);
+      })
+      .catch(onErro);
   }
 }

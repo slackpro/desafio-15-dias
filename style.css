@@ -458,3 +458,30 @@ ul#montarLista li {
 .topnav .auth-left .auth-logout-button:hover {
   background: rgba(220, 38, 38, 0.1);
 }
+
+/* Auth Styles (Moved from index.html) */
+#authPanel {
+  margin-top: 12px;
+}
+
+#authForm input[type='email'],
+#authForm input[type='password'] {
+  width: 48%;
+  padding: 8px;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+}
+
+#authEmail {
+  margin-right: 4%;
+}
+
+.auth-buttons {
+  margin-top: 8px;
+  display: flex;
+  gap: 8px;
+}
+
+#btnSignOut {
+  display: none;
+}

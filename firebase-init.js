@@ -33,6 +33,7 @@ import {
   child,
   update,
   remove,
+  onValue,
 } from 'https://www.gstatic.com/firebasejs/9.23.0/firebase-database.js';
 
 // Tenta importar a configuração exportada pelo arquivo `firebaseConfig.js` (criado pelo usuário).
@@ -86,6 +87,16 @@ if (firebaseConfig) {
         val ? Object.keys(val) : null
       );
       return val;
+    },
+    subscribeToTasks: (callback) => {
+      const uid = auth.currentUser ? auth.currentUser.uid : null;
+      console.debug('AppAuth.subscribeToTasks called, uid=', uid);
+      if (!uid) return null;
+      const tasksRef = ref(db, `users/${uid}/tarefas`);
+      return onValue(tasksRef, (snapshot) => {
+        const val = snapshot.exists() ? snapshot.val() : null;
+        callback(val);
+      });
     },
     createTask: async (task) => {
       const uid = auth.currentUser ? auth.currentUser.uid : null;

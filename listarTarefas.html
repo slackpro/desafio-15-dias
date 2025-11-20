@@ -25,27 +25,7 @@
     </div>
     <script type="module" src="firebase-init.js"></script>
     <script src="script.js"></script>
-    <script>
-      // tenta mostrar status de autenticação quando AppAuth estiver pronto
-      (function () {
-        let tries = 0;
-        const iv = setInterval(() => {
-          tries += 1;
-          if (window.AppAuth) {
-            window.AppAuth.onAuthStateChanged((user) => {
-              // apenas recarrega a lista quando houver usuário; o banner é
-              // atualizado pelo script compartilhado `auth-banner.js`.
-              if (user && typeof getLista === 'function') getLista();
-            });
-            clearInterval(iv);
-          }
-          if (tries > 10) {
-            clearInterval(iv);
-          }
-        }, 400);
-      })();
-      getLista();
-    </script>
+
     <script src="auth-banner.js"></script>
   </body>
 </html>

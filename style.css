@@ -1,3 +1,13 @@
+/*
+ * style.css
+ * Estilos principais da aplicação: painel, formulário, lista e navbar.
+ *
+ * Notas educativas:
+ * - A classe `.panel` é o container principal usado para centralizar conteúdo.
+ * - Use `.form-group` para agrupar campos relacionados com estilo consistente.
+ * - A `.topnav` foi projetada como partial injetável para evitar duplicação.
+ */
+
 * {
   margin: 0;
   padding: 0;
@@ -5,12 +15,13 @@
 }
 
 body {
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto,
+    'Helvetica Neue', Arial;
   background: linear-gradient(180deg, #f5f8fb 0%, #eef3f9 100%);
   color: #223;
   min-height: 100vh;
   padding: 36px 18px;
-  -webkit-font-smoothing:antialiased;
+  -webkit-font-smoothing: antialiased;
 }
 
 /* Container principal (aplica somente ao wrapper com classe .panel) */
@@ -32,7 +43,7 @@ body {
   border-radius: 10px;
   border: 1px solid #eef2f7;
   margin-bottom: 14px;
-  box-shadow: 0 6px 18px rgba(30,50,80,0.03);
+  box-shadow: 0 6px 18px rgba(30, 50, 80, 0.03);
 }
 
 h1 {
@@ -43,6 +54,108 @@ h1 {
   justify-content: space-between;
   align-items: center;
   gap: 12px;
+}
+
+/* Panel header with navigation */
+.panel-header {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 18px;
+}
+.nav-links {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+.nav-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border-radius: 10px;
+  background: #f1f5f9;
+  color: #0f1724;
+  text-decoration: none;
+  font-weight: 700;
+  border: 1px solid rgba(15, 23, 36, 0.04);
+}
+.nav-link.primary {
+  background: linear-gradient(90deg, #4a90e2, #3b7ad6);
+  color: #fff;
+  box-shadow: 0 6px 18px rgba(59, 122, 214, 0.12);
+}
+.nav-link.secondary {
+  background: transparent;
+  color: #4a5568;
+}
+
+/* Top navigation bar (shared) */
+.topnav {
+  position: sticky;
+  top: 12px;
+  left: 0;
+  right: 0;
+  max-width: 720px;
+  margin: 0 auto 18px auto;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 14px;
+  background: rgba(255, 255, 255, 0.7);
+  border-radius: 12px;
+  box-shadow: 0 6px 18px rgba(30, 50, 80, 0.04);
+  z-index: 50;
+}
+.topnav .brand {
+  font-weight: 800;
+  color: #0f1724;
+}
+.topnav .links {
+  display: flex;
+  gap: 14px;
+  /* centraliza os botões da navbar horizontalmente no espaço disponível */
+  flex: 1 1 auto;
+  justify-content: center;
+  margin: 0;
+}
+.topnav a {
+  padding: 10px 16px;
+  border-radius: 12px;
+  text-decoration: none;
+  color: #0f1724;
+  background: transparent;
+  font-weight: 800;
+  font-size: 16px;
+  letter-spacing: 0.2px;
+  transition: transform 0.08s ease, box-shadow 0.12s ease;
+}
+.topnav a:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 24px rgba(59, 122, 214, 0.08);
+}
+.topnav a.active,
+.topnav a:hover {
+  background: linear-gradient(90deg, #4a90e2, #3b7ad6);
+  color: #fff;
+}
+
+/* Labels smaller and more distinct from placeholders */
+label {
+  display: block;
+  font-size: 13px;
+  color: #334155;
+  font-weight: 700;
+  margin-bottom: 8px;
+}
+
+/* Placeholder styling */
+input::placeholder,
+textarea::placeholder {
+  color: #94a3b8;
+  opacity: 1;
 }
 
 a {
@@ -69,7 +182,7 @@ input[type='text'] {
   background: #fbfdff;
   font-size: 14px;
   color: #0f1724;
-  transition: box-shadow .15s ease, border-color .15s ease;
+  transition: box-shadow 0.15s ease, border-color 0.15s ease;
 }
 
 /* Organização e variáveis
@@ -93,40 +206,79 @@ textarea {
   background: #fbfdff;
   font-size: 14px;
   color: #0f1724;
-  transition: box-shadow .15s ease, border-color .15s ease;
+  transition: box-shadow 0.15s ease, border-color 0.15s ease;
 }
 
 button {
   display: inline-block;
   width: 100%;
   padding: 12px 14px;
-  background: linear-gradient(90deg,#2563eb,#1e40af);
+  background: linear-gradient(90deg, #2563eb, #1e40af);
   color: #fff;
   border: none;
   border-radius: 10px;
   font-weight: 600;
   font-size: 15px;
   cursor: pointer;
-  transition: transform .06s ease, box-shadow .12s ease;
+  transition: transform 0.06s ease, box-shadow 0.12s ease;
 }
 
 button:hover {
-  transform: translateY(-1px); box-shadow: 0 8px 22px rgba(30,64,175,0.12);
+  transform: translateY(-1px);
+  box-shadow: 0 8px 22px rgba(30, 64, 175, 0.12);
 }
 
 #mensagem {
-  margin-top:12px; color:#dc2626; font-weight:600;
+  margin-top: 12px;
+  font-weight: 600;
+}
+
+/* Mensagens de estado */
+.msg-success {
+  color: #16a34a; /* verde */
+}
+.msg-error {
+  color: #dc2626; /* vermelho */
+}
+
+/* Fade/visual for messages */
+#mensagem {
+  opacity: 0;
+  transform: translateY(6px);
+  transition: opacity 0.35s ease, transform 0.35s ease;
+}
+#mensagem.visible {
+  opacity: 1;
+  transform: translateY(0);
 }
 
 /* Header link as button */
-h1 a { font-size:13px; padding:8px 12px; background: linear-gradient(90deg,#4a90e2,#3b7ad6); color:#fff; border-radius:8px; box-shadow:0 4px 12px rgba(59,122,214,0.18); }
-h1 a:hover { filter: brightness(0.96); }
+h1 a {
+  font-size: 13px;
+  padding: 8px 12px;
+  background: linear-gradient(90deg, #4a90e2, #3b7ad6);
+  color: #fff;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(59, 122, 214, 0.18);
+}
+h1 a:hover {
+  filter: brightness(0.96);
+}
 
 /* Focus styles */
-input[type='text']:focus, textarea:focus { outline: none; border-color: #93c5fd; box-shadow: 0 6px 18px rgba(59,122,214,0.08); }
+input[type='text']:focus,
+textarea:focus {
+  outline: none;
+  border-color: #93c5fd;
+  box-shadow: 0 6px 18px rgba(59, 122, 214, 0.08);
+}
 
 /* Lista de tarefas */
-ul#montarLista { list-style: none; margin-top: 6px; padding: 0; }
+ul#montarLista {
+  list-style: none;
+  margin-top: 6px;
+  padding: 0;
+}
 /* placeholder removed */
 /* Estrutura dos itens agora é: li > .task-main > .task-text + .task-actions */
 ul#montarLista li {
@@ -138,17 +290,171 @@ ul#montarLista li {
   box-shadow: 0 4px 14px rgba(14, 30, 37, 0.03);
 }
 
-.task-main { display:flex; align-items:flex-start; gap:16px; }
-.task-text { flex: 1 1 auto; min-width:0; }
-.task-title { font-size: 20px; font-weight: 700; color: #0f1724; margin-bottom:8px; padding-bottom:8px; border-bottom: 1px solid rgba(15,23,36,0.06); }
-.task-desc { font-size: 16px; color: #475569; line-height:1.6; margin-top:10px; }
+.task-main {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+}
+.task-text {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.task-title {
+  font-size: 20px;
+  font-weight: 700;
+  color: #0f1724;
+  margin-bottom: 8px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid rgba(15, 23, 36, 0.06);
+}
+.task-desc {
+  font-size: 16px;
+  color: #475569;
+  line-height: 1.6;
+  margin-top: 10px;
+}
 
 /* Ações empilhadas verticalmente e alinhadas à direita para liberar largura do texto */
-.task-actions { display:flex; flex-direction:column; gap:10px; margin-left:auto; align-items:flex-end; }
-.task-actions button { flex: 0 0 auto; width: 110px; padding: 8px 10px; font-size:14px; border-radius:10px; cursor:pointer; }
-.task-actions button:first-child { background: linear-gradient(90deg,#2b6ef6,#1e56d6); color:#fff; border:none; }
-.task-actions button:last-child { background: linear-gradient(90deg,#ef4444,#dc2626); color:#fff; border:none; }
+.task-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-left: auto;
+  align-items: flex-end;
+}
+.task-actions button {
+  flex: 0 0 auto;
+  width: 110px;
+  padding: 8px 10px;
+  font-size: 14px;
+  border-radius: 10px;
+  cursor: pointer;
+}
+.task-actions button:first-child {
+  background: linear-gradient(90deg, #2b6ef6, #1e56d6);
+  color: #fff;
+  border: none;
+}
+.task-actions button:last-child {
+  background: linear-gradient(90deg, #ef4444, #dc2626);
+  color: #fff;
+  border: none;
+}
 
-.empty { text-align:center; color:#64748b; padding:28px 8px; }
+.empty {
+  text-align: center;
+  color: #64748b;
+  padding: 28px 8px;
+}
 
-@media (max-width:480px){ h1 { font-size:18px; flex-direction:column; align-items:flex-start; gap:8px; } .panel { padding:18px; } button { font-size:14px; } }
+@media (max-width: 480px) {
+  h1 {
+    font-size: 18px;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+  .panel {
+    padding: 18px;
+  }
+  button {
+    font-size: 14px;
+  }
+}
+
+/* Banner fixo que exibe o estado de autenticação do usuário */
+.auth-banner {
+  position: fixed;
+  top: 16px;
+  right: 16px;
+  background: #ffffff;
+  color: #0f1724;
+  padding: 10px 14px;
+  border-radius: 10px;
+  border: 1px solid rgba(15, 23, 36, 0.06);
+  box-shadow: 0 8px 26px rgba(14, 30, 37, 0.06);
+  font-size: 13px;
+  z-index: 9999;
+}
+
+@media (max-width: 480px) {
+  .auth-banner {
+    left: 12px;
+    right: 12px;
+    top: auto;
+    bottom: 12px;
+    text-align: center;
+  }
+}
+
+.auth-banner {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.auth-avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-weight: 700;
+  background: linear-gradient(135deg, #6b8cff, #4a90e2);
+  flex: 0 0 36px;
+  overflow: hidden;
+}
+.auth-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.auth-name {
+  font-size: 13px;
+  color: #0f1724;
+  font-weight: 600;
+}
+.auth-logout-button {
+  margin-left: 8px;
+  background: transparent;
+  color: #1f2937;
+  border: 1px solid rgba(15, 23, 36, 0.06);
+  padding: 6px 10px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 600;
+}
+.auth-logout-button:hover {
+  background: #f1f5f9;
+}
+
+/* Topnav-specific auth layout (scoped) */
+.topnav .auth-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 160px;
+  padding: 6px 10px;
+  border-radius: 10px;
+  background: rgba(74, 144, 226, 0.06); /* leve destaque azul */
+  border: 1px solid rgba(74, 144, 226, 0.12);
+  box-shadow: 0 6px 18px rgba(59, 122, 214, 0.04);
+}
+.topnav .auth-left .auth-name {
+  font-size: 14px;
+  font-weight: 700;
+  color: #0f1724;
+}
+.topnav .auth-left .auth-logout-button {
+  padding: 6px 10px;
+  border-radius: 8px;
+  font-size: 13px;
+  color: #7f1d1d; /* tom levemente vermelho */
+  border: 1px solid rgba(220, 38, 38, 0.12);
+  background: rgba(220, 38, 38, 0.04);
+}
+.topnav .auth-left .auth-logout-button:hover {
+  background: rgba(220, 38, 38, 0.1);
+}

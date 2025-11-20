@@ -28,4 +28,17 @@ const FIREBASE_CONFIG = {
 };
 */
 
-export { FIREBASE_CONFIG };
+// firebaseConfig.js
+// Coloque este arquivo na raiz do servidor para que /firebaseConfig.js seja importável pelo browser.
+// Apenas exporte a constante FIREBASE_CONFIG — não inicialize o Firebase aqui.
+
+export const FIREBASE_CONFIG = {
+  apiKey: 'AIzaSyAhMWkMOtDg0kT95K7MWpYDQRkRnHlEcsk',
+  authDomain: 'desafio-15-dias-315e5.firebaseapp.com',
+  databaseURL: 'https://desafio-15-dias-315e5-default-rtdb.firebaseio.com',
+  projectId: 'desafio-15-dias-315e5',
+  storageBucket: 'desafio-15-dias-315e5.firebasestorage.app',
+  messagingSenderId: '136597315026',
+  appId: '1:136597315026:web:07c312bf34073a7616fc0b',
+  measurementId: 'G-J5LX6T9SJN',
+};

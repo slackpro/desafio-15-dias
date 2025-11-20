@@ -4,38 +4,64 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <link rel="stylesheet" href="style.css" />
-    <title>Document</title>
+    <title>Lista de Tarefas</title>
   </head>
   <body>
+    <script src="/topnav.js"></script>
+    <!--
+      index.html
+      - Página de cadastro de tarefas e UI de autenticação (entrar / registrar).
+      - Se quiser usar Firebase, forneça um arquivo `/firebaseConfig.js` que exporte
+        `FIREBASE_CONFIG` como um ES module (ver README.md para instruções).
+    -->
     <div class="panel">
-      <h1>Cadastro de Tarefas</h1>
-      <a href="http://localhost:5500/listarTarefas.html">Ver tarefas criadas</a>
+      <div class="panel-header">
+        <h1>Cadastro de Tarefas</h1>
+      </div>
 
       <!-- Auth UI: o usuário deve preencher firebaseConfig.js (a partir do sample) para ativar -->
-      <div id="authPanel" style="margin-top:12px;">
+      <div id="authPanel" style="margin-top: 12px">
         <div id="authForm">
-          <input id="authEmail" type="email" placeholder="Email" style="width:48%; margin-right:4%; padding:8px;" />
-          <input id="authPass" type="password" placeholder="Senha" style="width:48%; padding:8px;" />
-          <div style="margin-top:8px; display:flex; gap:8px;">
+          <input
+            id="authEmail"
+            type="email"
+            placeholder="seu@email.com"
+            style="width: 48%; margin-right: 4%; padding: 8px"
+          />
+          <input
+            id="authPass"
+            type="password"
+            placeholder="Mínimo 6 caracteres"
+            style="width: 48%; padding: 8px"
+          />
+          <div style="margin-top: 8px; display: flex; gap: 8px">
             <button id="btnSignIn">Entrar</button>
             <button id="btnSignUp">Registrar</button>
-            <button id="btnSignOut" style="display:none;">Sair</button>
+            <button id="btnSignOut" style="display: none">Sair</button>
           </div>
         </div>
-        <div id="authStatus" style="margin-top:8px; color:#475569; font-size:14px;"></div>
+        <!-- authStatus removed: top-right banner shows auth state -->
       </div>
       <div class="form-group">
-        <label>Título da tarefa</label><br />
-        <input id="titulo" type="text" placeholder="Título da tarefa" />
+        <label for="titulo">Título (resumo)</label>
+        <input
+          id="titulo"
+          type="text"
+          placeholder="Ex.: Comprar leite, chamar cliente"
+        />
       </div>
       <div class="form-group">
-        <label>Descrição da tarefa</label><br />
-        <textarea id="descricao" placeholder="Descrião da tarefa"></textarea>
+        <label for="descricao">Detalhes / Observações</label>
+        <textarea
+          id="descricao"
+          placeholder="Descreva passos, prazo ou informações importantes..."
+        ></textarea>
       </div>
       <button onclick="criarTarefa()">Cadastrar</button>
       <p id="mensagem"></p>
     </div>
     <script type="module" src="/firebase-init.js"></script>
+    <!-- <script type="module" src="/firebaseConfig.js"></script> -->
     <script src="/script.js"></script>
     <script>
       // Inicializa handlers de autenticação (se AppAuth estiver disponível)
@@ -45,21 +71,34 @@
           const btnSignOut = document.getElementById('btnSignOut');
           const btnSignIn = document.getElementById('btnSignIn');
           const btnSignUp = document.getElementById('btnSignUp');
+          const authForm = document.getElementById('authForm');
           const emailEl = document.getElementById('authEmail');
           const passEl = document.getElementById('authPass');
 
           if (!window.AppAuth) return;
 
           window.AppAuth.onAuthStateChanged((user) => {
+            // 'status' element may have been removed (we now use the top-right banner).
+            // Guardamos para evitar 'Cannot set properties of null'.
+            if (
+              typeof status !== 'undefined' &&
+              status &&
+              status instanceof Element
+            ) {
+              if (user)
+                status.innerText = 'Logado como: ' + (user.email || user.uid);
+              else status.innerText = 'Não autenticado';
+            }
+
             if (user) {
-              status.innerText = 'Logado como: ' + (user.email || user.uid);
+              if (authForm) authForm.style.display = 'none';
               btnSignOut.style.display = 'inline-block';
               btnSignIn.style.display = 'none';
               btnSignUp.style.display = 'none';
               // recarrega lista (caso esteja na página de listagem)
               if (typeof getLista === 'function') getLista();
             } else {
-              status.innerText = 'Não autenticado';
+              if (authForm) authForm.style.display = 'block';
               btnSignOut.style.display = 'none';
               btnSignIn.style.display = 'inline-block';
               btnSignUp.style.display = 'inline-block';
@@ -69,17 +108,25 @@
           btnSignIn.addEventListener('click', async () => {
             try {
               await window.AppAuth.signIn(emailEl.value, passEl.value);
-            } catch (e) { alert('Erro ao entrar: ' + e.message); }
+            } catch (e) {
+              alert('Erro ao entrar: ' + e.message);
+            }
           });
 
           btnSignUp.addEventListener('click', async () => {
             try {
               await window.AppAuth.signUp(emailEl.value, passEl.value);
-            } catch (e) { alert('Erro ao registrar: ' + e.message); }
+            } catch (e) {
+              alert('Erro ao registrar: ' + e.message);
+            }
           });
 
           btnSignOut.addEventListener('click', async () => {
-            try { await window.AppAuth.signOut(); } catch (e) { console.error(e); }
+            try {
+              await window.AppAuth.signOut();
+            } catch (e) {
+              console.error(e);
+            }
           });
         }
 
@@ -87,10 +134,21 @@
         let tries = 0;
         const iv = setInterval(() => {
           tries += 1;
-          if (window.AppAuth) { setupAuthHandlers(); clearInterval(iv); }
+          if (window.AppAuth) {
+            setupAuthHandlers();
+            // também atualiza o banner imediatamente com o estado atual (se houver)
+            if (
+              window.AppAuth &&
+              typeof window.AppAuth.onAuthStateChanged === 'function'
+            ) {
+              // o callback onAuthStateChanged será chamado imediatamente com o estado atual
+            }
+            clearInterval(iv);
+          }
           if (tries > 10) clearInterval(iv);
         }, 500);
       })();
     </script>
+    <script src="/auth-banner.js"></script>
   </body>
 </html>

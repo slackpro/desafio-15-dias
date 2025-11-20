@@ -1,11 +1,39 @@
 // firebase-init.js (module)
-// Este módulo inicializa o Firebase (quando o arquivo firebaseConfig.js existir)
-// e expõe uma API global simples `window.AppAuth` com métodos para autenticação
-// e leitura/escrita de tarefas no nó `users/{uid}/tarefas`.
+// --------------------------------------
+// Objetivo:
+// - Inicializar o Firebase SDK (Auth + Realtime Database) quando o arquivo
+//   `/firebaseConfig.js` estiver presente e exportar `FIREBASE_CONFIG`.
+// - Expor uma API global leve `window.AppAuth` para uso no frontend.
+// - Arquitetura: os dados do usuário são armazenados no nó
+//   `users/{uid}/tarefas` (cada usuário tem seu próprio conjunto de tarefas).
+//
+// Observações educativas:
+// - O arquivo `firebaseConfig.js` NÃO é fornecido no repositório por segurança.
+//   Ele deve exportar o objeto `FIREBASE_CONFIG` como um ES module.
+// - Se `firebaseConfig.js` não existir, o app continuará funcionando usando
+//   o fallback REST (útil para testes locais), mas sem autenticação por usuário.
+// - Em produção, configure regras do Realtime Database para restringir acesso
+//   a `users/$uid` apenas para `auth.uid === $uid`.
+// --------------------------------------
 
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js';
-import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut } from 'https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js';
-import { getDatabase, ref, push, set, get, child, update, remove } from 'https://www.gstatic.com/firebasejs/9.23.0/firebase-database.js';
+import {
+  getAuth,
+  onAuthStateChanged,
+  signInWithEmailAndPassword,
+  createUserWithEmailAndPassword,
+  signOut,
+} from 'https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js';
+import {
+  getDatabase,
+  ref,
+  push,
+  set,
+  get,
+  child,
+  update,
+  remove,
+} from 'https://www.gstatic.com/firebasejs/9.23.0/firebase-database.js';
 
 // Tenta importar a configuração exportada pelo arquivo `firebaseConfig.js` (criado pelo usuário).
 // Se não existir, não inicializa o Firebase e o projeto continuará a usar o fallback REST.
@@ -20,7 +48,9 @@ try {
   firebaseConfig = mod.FIREBASE_CONFIG || null;
 } catch (e) {
   // não encontrou firebaseConfig.js — tudo bem, faremos fallback
-  console.info('firebase-init: nenhum firebaseConfig.js encontrado. Usando fallback REST.');
+  console.info(
+    'firebase-init: nenhum firebaseConfig.js encontrado. Usando fallback REST.'
+  );
 }
 
 if (firebaseConfig) {
@@ -33,39 +63,61 @@ if (firebaseConfig) {
     // registra um callback para mudanças de estado de autenticação
     onAuthStateChanged: (cb) => onAuthStateChanged(auth, (user) => cb(user)),
     signIn: async (email, password) => {
+      console.debug('AppAuth.signIn called', email);
       return signInWithEmailAndPassword(auth, email, password);
     },
     signUp: async (email, password) => {
+      console.debug('AppAuth.signUp called', email);
       return createUserWithEmailAndPassword(auth, email, password);
     },
     signOut: async () => {
+      console.debug('AppAuth.signOut called');
       return signOut(auth);
     },
     getUid: () => (auth.currentUser ? auth.currentUser.uid : null),
     // tarefas
     getTasks: async () => {
       const uid = auth.currentUser ? auth.currentUser.uid : null;
+      console.debug('AppAuth.getTasks called, uid=', uid);
       if (!uid) return null;
       const snap = await get(child(ref(db), `users/${uid}/tarefas`));
-      return snap.exists() ? snap.val() : null;
+      const val = snap.exists() ? snap.val() : null;
+      console.debug(
+        'AppAuth.getTasks result keys=',
+        val ? Object.keys(val) : null
+      );
+      return val;
     },
     createTask: async (task) => {
       const uid = auth.currentUser ? auth.currentUser.uid : null;
+      console.debug('AppAuth.createTask called, uid=', uid, 'task=', task);
       if (!uid) throw new Error('Usuário não autenticado');
       const newRef = push(ref(db, `users/${uid}/tarefas`));
       await set(newRef, task);
+      console.debug('AppAuth.createTask wrote key=', newRef.key);
       return newRef.key;
     },
     updateTask: async (taskId, task) => {
       const uid = auth.currentUser ? auth.currentUser.uid : null;
+      console.debug(
+        'AppAuth.updateTask called, uid=',
+        uid,
+        'taskId=',
+        taskId,
+        'task=',
+        task
+      );
       if (!uid) throw new Error('Usuário não autenticado');
       await update(ref(db, `users/${uid}/tarefas/${taskId}`), task);
+      console.debug('AppAuth.updateTask ok');
     },
     deleteTask: async (taskId) => {
       const uid = auth.currentUser ? auth.currentUser.uid : null;
+      console.debug('AppAuth.deleteTask called, uid=', uid, 'taskId=', taskId);
       if (!uid) throw new Error('Usuário não autenticado');
       await remove(ref(db, `users/${uid}/tarefas/${taskId}`));
-    }
+      console.debug('AppAuth.deleteTask ok');
+    },
   };
 
   // marca que inicializou

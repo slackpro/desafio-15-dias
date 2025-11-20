@@ -1,7 +1,15 @@
-// URL base do banco de dados (Firebase Realtime Database neste projeto)
+// =========================================
+// script.js
+// Lógica principal do frontend: criação, leitura, atualização e deleção (CRUD)
+// - Prioriza a API `window.AppAuth` (Firebase SDK) quando disponível.
+// - Usa um fallback via REST para testes locais quando Firebase não estiver configurado.
+// - Evita innerHTML sempre que possível: monta elementos DOM para maior segurança.
+// =========================================
+
+// URL base do banco de dados (usada apenas pelo fallback REST)
 let url = 'https://desafio-15-dias-315e5-default-rtdb.firebaseio.com/';
 
-// Flag para evitar múltiplas edições simultâneas
+// Flag para evitar múltiplas edições simultâneas (ui guard)
 let estaEditado = false;
 
 /**
@@ -14,42 +22,65 @@ function getLista() {
   let ul = document.getElementById('montarLista');
   let emptyEl = document.getElementById('emptyState');
   let html = '';
+  // Se a página não tiver o elemento de listagem, sair silenciosamente.
+  // Isso evita erros quando chamamos getLista() em páginas que não mostram a lista.
+  if (!ul) {
+    console.warn('getLista: elemento "montarLista" não encontrado. Pulando.');
+    return;
+  }
+
+  // Observability: logs ajudam a diagnosticar quando o AppAuth está presente
+  console.debug(
+    'getLista: window.AppAuth=',
+    !!window.AppAuth,
+    '__FIREBASE_INITIALIZED__=',
+    !!window.__FIREBASE_INITIALIZED__
+  );
   // Se o Firebase foi inicializado, use a API AppAuth que garante que
   // estamos lendo os dados do nó por-usuário (/users/{uid}/tarefas).
-  if (window.AppAuth && window.__FIREBASE_INITIALIZED__) {
-    window.AppAuth.getTasks().then((dados) => {
-      if (!dados) {
-        ul.innerHTML = '';
-        if (emptyEl) {
-          emptyEl.style.display = 'block';
-          emptyEl.innerText = 'Nenhuma tarefa encontrada.';
+  // Se a API AppAuth estiver disponível, sempre priorize ela e NÃO tente o fallback REST
+  // O fallback pode gerar 401 se o Realtime Database estiver protegido por regras.
+  if (window.AppAuth) {
+    console.debug('getLista: usando AppAuth.getTasks()');
+    window.AppAuth.getTasks()
+      .then((dados) => {
+        if (!dados) {
+          ul.innerHTML = '';
+          if (emptyEl) {
+            emptyEl.style.display = 'block';
+            emptyEl.innerText = 'Nenhuma tarefa encontrada.';
+          }
+          console.debug('getLista: AppAuth.getTasks retornou vazio/null');
+          return;
         }
-        return;
-      }
 
-      const arrayListaTarefas = Object.entries(dados);
-      if (arrayListaTarefas.length === 0) {
-        ul.innerHTML = '';
-        if (emptyEl) {
-          emptyEl.style.display = 'block';
-          emptyEl.innerText = 'Nenhuma tarefa encontrada.';
+        const arrayListaTarefas = Object.entries(dados);
+        if (arrayListaTarefas.length === 0) {
+          ul.innerHTML = '';
+          if (emptyEl) {
+            emptyEl.style.display = 'block';
+            emptyEl.innerText = 'Nenhuma tarefa encontrada.';
+          }
+          return;
         }
-        return;
-      }
 
-      ul.innerHTML = '';
-      arrayListaTarefas.forEach((element) => {
-        const node = montarLista(element[1], element[0]);
-        ul.appendChild(node);
+        ul.innerHTML = '';
+        arrayListaTarefas.forEach((element) => {
+          const node = montarLista(element[1], element[0]);
+          ul.appendChild(node);
+        });
+        if (emptyEl) emptyEl.style.display = 'none';
+      })
+      .catch((err) => {
+        console.error('Erro ao obter tarefas via AppAuth', err);
       });
-      if (emptyEl) emptyEl.style.display = 'none';
-    }).catch((err) => {
-      console.error('Erro ao obter tarefas via AppAuth', err);
-    });
     return;
   }
 
   // Fallback: comportamento antigo via REST (sem autenticação)
+  console.warn(
+    'getLista: AppAuth não disponível — usando fallback REST (pode gerar 401).'
+  );
   fetch(url + '/tarefas.json').then((response) => {
     if (response.status === 200) {
       response.json().then((dados) => {
@@ -217,10 +248,10 @@ function salvarTarefa(idBanco) {
 
   // Se AppAuth disponível, atualiza no nó do usuário
   if (window.AppAuth && window.__FIREBASE_INITIALIZED__) {
-    window.AppAuth
-      .updateTask(idBanco, tarefa)
+    console.debug('salvarTarefa: usando AppAuth.updateTask', idBanco, tarefa);
+    window.AppAuth.updateTask(idBanco, tarefa)
       .then(() => getLista())
-      .catch((e) => console.error(e));
+      .catch((e) => console.error('salvarTarefa erro AppAuth.updateTask', e));
   } else {
     fetch(url + `/tarefas/${idBanco}.json`, {
       method: 'PATCH',
@@ -250,10 +281,12 @@ function deletarTarefas(idBanco) {
   const confirme = confirm('Tem certeza que deseja deletar esta tarefa?');
   if (confirme) {
     if (window.AppAuth && window.__FIREBASE_INITIALIZED__) {
-      window.AppAuth
-        .deleteTask(idBanco)
+      console.debug('deletarTarefas: usando AppAuth.deleteTask', idBanco);
+      window.AppAuth.deleteTask(idBanco)
         .then(() => getLista())
-        .catch((e) => console.error(e));
+        .catch((e) =>
+          console.error('deletarTarefas erro AppAuth.deleteTask', e)
+        );
     } else {
       fetch(url + `/tarefas/${idBanco}.json`, {
         method: 'DELETE',
@@ -276,6 +309,9 @@ function criarTarefa() {
   let titulo = document.getElementById('titulo').value;
   let descricao = document.getElementById('descricao').value;
   let mensagem = document.getElementById('mensagem');
+  // timeout para esconder a mensagem depois do fade
+  if (typeof window._mensagemTimeout === 'undefined')
+    window._mensagemTimeout = null;
 
   const tarefa = {
     id: new Date().toISOString(),
@@ -284,22 +320,103 @@ function criarTarefa() {
   };
 
   try {
-    fetch(url + '/tarefas.json', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(tarefa),
-    }).then((Response) => {
-      // Observação: alguns servidores retornam 200 como string, aqui mantemos a checagem original
-      if (Response.status == '200') {
-        mensagem.innerText = 'Salvo com sucesso';
-      } else {
-        mensagem.innerHTML = 'Erro ao salvar';
-      }
-    });
+    // Se o AppAuth (Firebase SDK) estiver inicializado, use a API por-usuário
+    // Isso evita erros 401 quando as regras do Realtime Database exigem autenticação
+    if (window.AppAuth && window.__FIREBASE_INITIALIZED__) {
+      console.debug('criarTarefa: usando AppAuth.createTask', tarefa);
+      window.AppAuth.createTask(tarefa)
+        .then(() => {
+          if (mensagem) {
+            clearTimeout(window._mensagemTimeout);
+            mensagem.classList.remove('msg-error');
+            mensagem.classList.add('msg-success');
+            mensagem.innerText = 'Salvo com sucesso';
+            mensagem.classList.add('visible');
+            window._mensagemTimeout = setTimeout(() => {
+              mensagem.classList.remove('visible');
+            }, 4000);
+          }
+          // limpa campos do formulário após criar com sucesso
+          try {
+            const tituloEl = document.getElementById('titulo');
+            const descEl = document.getElementById('descricao');
+            if (tituloEl) {
+              tituloEl.value = '';
+              tituloEl.focus();
+            }
+            if (descEl) descEl.value = '';
+          } catch (e) {
+            /* ignorar se elementos não existirem na página atual */
+          }
+          if (typeof getLista === 'function') getLista();
+        })
+        .catch((err) => {
+          console.error('Erro criando tarefa via AppAuth', err);
+          if (mensagem) {
+            clearTimeout(window._mensagemTimeout);
+            mensagem.classList.remove('msg-success');
+            mensagem.classList.add('msg-error');
+            mensagem.innerText = 'Erro ao salvar: ' + (err.message || err);
+            mensagem.classList.add('visible');
+            window._mensagemTimeout = setTimeout(() => {
+              mensagem.classList.remove('visible');
+            }, 6000);
+          }
+        });
+    } else {
+      // Fallback antigo via REST (sem autenticação)
+      fetch(url + '/tarefas.json', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(tarefa),
+      }).then((response) => {
+        if (response.ok) {
+          if (mensagem) {
+            clearTimeout(window._mensagemTimeout);
+            mensagem.classList.remove('msg-error');
+            mensagem.classList.add('msg-success');
+            mensagem.innerText = 'Salvo com sucesso';
+            mensagem.classList.add('visible');
+            window._mensagemTimeout = setTimeout(() => {
+              mensagem.classList.remove('visible');
+            }, 4000);
+          }
+          // limpa campos do formulário após criar com sucesso
+          try {
+            const tituloEl = document.getElementById('titulo');
+            const descEl = document.getElementById('descricao');
+            if (tituloEl) {
+              tituloEl.value = '';
+              tituloEl.focus();
+            }
+            if (descEl) descEl.value = '';
+          } catch (e) {
+            /* ignorar se elementos não existirem na página atual */
+          }
+          if (typeof getLista === 'function') getLista();
+        } else {
+          if (mensagem) {
+            clearTimeout(window._mensagemTimeout);
+            mensagem.classList.remove('msg-success');
+            mensagem.classList.add('msg-error');
+            mensagem.innerText =
+              'Erro ao salvar (HTTP ' + response.status + ')';
+            mensagem.classList.add('visible');
+            window._mensagemTimeout = setTimeout(() => {
+              mensagem.classList.remove('visible');
+            }, 6000);
+          }
+        }
+      });
+    }
   } catch (error) {
     console.log(error);
-    mensagem.innerHTML = error;
+    if (mensagem) {
+      mensagem.classList.remove('msg-success');
+      mensagem.classList.add('msg-error');
+      mensagem.innerText = String(error);
+    }
   }
 }

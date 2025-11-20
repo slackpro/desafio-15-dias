@@ -7,7 +7,6 @@
     <title>Lista de tarefas</title>
   </head>
   <body>
-    <script src="topnav.js"></script>
     <!--
       listarTarefas.html
       - Página para visualizar, editar e deletar tarefas.
@@ -23,9 +22,9 @@
       <ul id="montarLista"></ul>
       <div class="empty" id="emptyState">Carregando tarefas...</div>
     </div>
+    <!-- Scripts -->
     <script type="module" src="firebase-init.js"></script>
-    <script src="script.js"></script>
-
-    <script src="auth-banner.js"></script>
+    <script src="script.js" defer></script>
+    <script src="layout.js" defer></script>
   </body>
 </html>

@@ -34,16 +34,12 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 function initAuthHandlers() {
-  // Polling para esperar o AppAuth carregar
-  let tries = 0;
-  const iv = setInterval(() => {
-    tries += 1;
-    if (window.AppAuth) {
-      clearInterval(iv);
-      setupAuthListeners();
-    }
-    if (tries > 20) clearInterval(iv);
-  }, 500);
+  // Aguarda o AppAuth carregar via evento ou check direto
+  if (window.__FIREBASE_INITIALIZED__) {
+    setupAuthListeners();
+  } else {
+    window.addEventListener('firebase-ready', setupAuthListeners);
+  }
 }
 
 function setupAuthListeners() {

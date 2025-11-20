@@ -132,5 +132,6 @@ if (firebaseConfig) {
 
   // marca que inicializou
   window.__FIREBASE_INITIALIZED__ = true;
+  window.dispatchEvent(new CustomEvent('firebase-ready'));
   console.info('firebase-init: Firebase inicializado e AppAuth disponível.');
 }

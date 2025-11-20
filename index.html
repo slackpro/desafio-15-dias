@@ -7,7 +7,6 @@
     <title>Lista de Tarefas</title>
   </head>
   <body>
-    <script src="topnav.js"></script>
     <!--
       index.html
       - Página de cadastro de tarefas e UI de autenticação (entrar / registrar).
@@ -34,7 +33,6 @@
             <button id="btnSignOut">Sair</button>
           </div>
         </div>
-        <!-- authStatus removed: top-right banner shows auth state -->
       </div>
       <div class="form-group">
         <label for="titulo">Título (resumo)</label>
@@ -54,9 +52,9 @@
       <button onclick="criarTarefa()">Cadastrar</button>
       <p id="mensagem"></p>
     </div>
+    <!-- Scripts -->
     <script type="module" src="firebase-init.js"></script>
-    <!-- <script type="module" src="firebaseConfig.js"></script> -->
-    <script src="script.js"></script>
-    <script src="auth-banner.js"></script>
+    <script src="script.js" defer></script>
+    <script src="layout.js" defer></script>
   </body>
 </html>

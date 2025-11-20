@@ -41,10 +41,9 @@ let firebaseConfig = null;
 try {
   // eslint-disable-next-line no-undef
   // Se o usuário criou `firebaseConfig.js` que faz `export const FIREBASE_CONFIG = {...}`
-  // podemos importá-lo dinamicamente. Como browsers não permitem imports dinâmicos fáceis
-  // sem path absoluto, pedimos que o usuário coloque um arquivo `firebaseConfig.js` na raiz
-  // que exporte `FIREBASE_CONFIG` (ES module). Tentar importar de '/firebaseConfig.js'.
-  const mod = await import('/firebaseConfig.js');
+  // podemos importá-lo dinamicamente. Import relativo funciona quando o arquivo
+  // está no mesmo diretório do bundle. Tentar importar './firebaseConfig.js'.
+  const mod = await import('./firebaseConfig.js');
   firebaseConfig = mod.FIREBASE_CONFIG || null;
 } catch (e) {
   // não encontrou firebaseConfig.js — tudo bem, faremos fallback

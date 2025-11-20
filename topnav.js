@@ -14,7 +14,7 @@
 (function () {
   async function insertTopnav() {
     try {
-      const res = await fetch('/topnav.html', { cache: 'no-cache' });
+      const res = await fetch('topnav.html', { cache: 'no-cache' });
       if (!res.ok) throw new Error('partial not found');
       const html = await res.text();
       // Use template to parse fragment or full document, then pick the .topnav element
@@ -44,8 +44,8 @@
       nav.innerHTML = `
         <div class="auth-left" id="topnavAuth"></div>
         <div class="links">
-          <a href="/index.html">Cadastrar</a>
-          <a href="/listarTarefas.html">Listar</a>
+          <a href="index.html">Cadastrar</a>
+          <a href="listarTarefas.html">Listar</a>
         </div>
       `;
       const current =
